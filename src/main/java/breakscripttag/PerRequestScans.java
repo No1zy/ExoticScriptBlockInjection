@@ -56,10 +56,23 @@ public class PerRequestScans implements IScannerCheck {
             IRequestInfo requestInfo = this.helpers.analyzeRequest(baseRequestResponse.getRequest());
             byte request[] = baseRequestResponse.getRequest();
             List<IParameter> parameters = requestInfo.getParameters();
-
             byte payloads[][] = new byte[][]{
                     "<!--<script>".getBytes(),
-                    "<!--</script>".getBytes()
+                    "<!--</script>".getBytes(),
+                    "<!-- <script>".getBytes(),
+                    "<!-- </script>".getBytes(),
+                    "<!--hukjfa<script>".getBytes(),
+                    "<!--hukjfa</script>".getBytes(),
+                    "<!--<<script>".getBytes(),
+                    "<!--<</script>".getBytes(),
+                    "<!--</<script>".getBytes(),
+                    "<!--</</script>".getBytes(),
+                    "<!--</</script>".getBytes(),
+                    "<!--\n<script>".getBytes(),
+                    "<!--\n</script>".getBytes(),
+                    "<!--\n</script>".getBytes(),
+                    "<!--!><script>".getBytes(),
+                    "<!--!></script>".getBytes(),
             };
 
             for (IParameter parameter : parameters) {
