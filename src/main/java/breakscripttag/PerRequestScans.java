@@ -101,10 +101,18 @@ public class PerRequestScans implements IScannerCheck {
                                         "Broken Script tag injection",
                                         "Medium",
                                         "Certain",
-                                        "For historical reasons script blocks are known to make exotic parse.\n" +
+                                        "For historical reasons script blocks are known to make exotic parse.<br/>" +
                                                 "Reference: https://html.spec.whatwg.org/multipage/scripting.html#restrictions-for-contents-of-script-elements",
-                                        "this issue lead client side DoS or XSS.",
-                                        "Unicode escape to '<'>'.",
+                                        "this issue leads client side DoS or XSS. " +
+                                                "If like '&lt;!--&lt;script&gt;' or '&lt;!--&lt;/script&gt;' string appeared into &lt;script&gt; tag, " +
+                                                "while until appeared second &lt;/script&gt; tag, browser believes to continue &lt;script&gt; tag. <br/>" +
+                                                "By this issue, attaker might able to XSS by send payload that includes two &lt;/script&gt; tag.<br/>" +
+                                                "<br/>" +
+                                                "Example: &lt;!--&lt;script&gt;&lt;/script&gt;&lt;/script&gt;&lt;img src=x onerror=alert(1)&gt;<br/>" +
+                                                "<br/>" +
+                                                "Reference: " +
+                                                "https://speakerdeck.com/masatokinugawa/shibuya-dot-xss-techtalk-number-11?slide=23",
+                                        "Unicode escape to '<' and '>'.",
                                         httpMessages,
                                         baseRequestResponse.getHttpService()
                                 );
