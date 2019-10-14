@@ -85,7 +85,7 @@ public class PerRequestScans implements IScannerCheck {
                                 IHttpRequestResponse httpMessages[] = {attack};
                                 return new CustomIssue(
                                         this.helpers.analyzeRequest(attack).getUrl(),
-                                        "Script tag injection",
+                                        "Broken Script tag injection",
                                         "Medium",
                                         "Certain",
                                         "For historical reasons script blocks are known to make exotic parse.\n" +

@@ -14,7 +14,7 @@ public class BreakScriptTag implements IBurpExtender {
         this.callbacks = callbacks;
         this.helpers = callbacks.getHelpers();
 
-        callbacks.setExtensionName("break script tag");
+        callbacks.setExtensionName("Broken Script tag injection");
 
         callbacks.registerScannerCheck(new PerRequestScans(callbacks));
     }

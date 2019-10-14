@@ -2,8 +2,8 @@ plugins {
     id 'java'
 }
 
-group 'script-tag-injection'
-version '1.0-SNAPSHOT'
+group 'broken_script_tag_injection'
+version '0.1'
 
 sourceCompatibility = 1.8
 
