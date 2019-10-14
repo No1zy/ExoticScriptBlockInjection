@@ -12,7 +12,8 @@ repositories {
 }
 
 dependencies {
-    compile 'net.portswigger.burp.extender:burp-extender-api:1.7.22'
+    compile 'net.portswigger.burp.extender:burp-extender-api:2.1'
+
     // jsoup HTML parser library @ https://jsoup.org/
     compile 'org.jsoup:jsoup:1.12.1'
 
