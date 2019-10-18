@@ -13,6 +13,8 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.Function;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class PerRequestScans implements IScannerCheck {
     private IBurpExtenderCallbacks callbacks;
@@ -88,43 +90,71 @@ public class PerRequestScans implements IScannerCheck {
                     System.out.println("Request: " + new String(customRequest));
                     IHttpRequestResponse attack = callbacks.makeHttpRequest(baseRequestResponse.getHttpService(), customRequest);
 
-                    Document doc = Jsoup.parse(new String(attack.getResponse()));
-
-                    Elements scripts = doc.getElementsByTag("script");
-                    for (Element script : scripts) {
-                        for (DataNode node : script.dataNodes()) {
-
-                            if (node.getWholeData().contains(new String(payload))) {
-                                IHttpRequestResponse httpMessages[] = {attack};
-                                return new CustomIssue(
-                                        this.helpers.analyzeRequest(attack).getUrl(),
-                                        "Broken Script tag injection",
-                                        "Medium",
-                                        "Certain",
-                                        "For historical reasons script blocks are known to make exotic parse.<br/>" +
-                                                "Reference: https://html.spec.whatwg.org/multipage/scripting.html#restrictions-for-contents-of-script-elements",
-                                        "this issue leads client side DoS or XSS. " +
-                                                "If like '&lt;!--&lt;script&gt;' or '&lt;!--&lt;/script&gt;' string appeared into &lt;script&gt; tag, " +
-                                                "while until appeared second &lt;/script&gt; tag, browser believes to continue &lt;script&gt; tag. <br/>" +
-                                                "By this issue, attaker might able to XSS by send payload that includes two &lt;/script&gt; tag.<br/>" +
-                                                "<br/>" +
-                                                "Example: &lt;!--&lt;script&gt;&lt;/script&gt;&lt;/script&gt;&lt;img src=x onerror=alert(1)&gt;<br/>" +
-                                                "<br/>" +
-                                                "Reference: " +
-                                                "https://speakerdeck.com/masatokinugawa/shibuya-dot-xss-techtalk-number-11?slide=23",
-                                        "Unicode escape to '<' and '>'.",
-                                        httpMessages,
-                                        baseRequestResponse.getHttpService()
-                                );
-
-                            }
-                        }
-                    }
+                    IScanIssue issue = checkAttackSuccessed(attack, baseRequestResponse, payload);
+                    if (Objects.nonNull(issue)) return issue;
                 }
             }
 
             return null;
         };
+    }
+
+    private List<int[]> createHighlights(String pattern, String data) {
+        Pattern regex = Pattern.compile(pattern);
+        Matcher responseMatcher = regex.matcher(data);
+        List<int[]> highlights = new ArrayList<>();
+        while (responseMatcher.find()) {
+            int[] highlight = new int[2];
+            highlight[0] = responseMatcher.start();
+            highlight[1] = responseMatcher.end();
+            highlights.add(highlight);
+        }
+        return highlights;
+    }
+
+    private CustomIssue checkAttackSuccessed(IHttpRequestResponse attack, IHttpRequestResponse baseRequestResponse, byte[] payload) {
+        Document doc = Jsoup.parse(new String(attack.getResponse()));
+
+        Elements scripts = doc.getElementsByTag("script");
+        for (Element script : scripts) {
+            for (DataNode node : script.dataNodes()) {
+                String payloadStr = this.helpers.bytesToString(payload);
+                if (node.getWholeData().contains(payloadStr)) {
+
+                    List<int[]> responseHighlights = createHighlights(Pattern.quote(payloadStr),
+                            this.helpers.bytesToString(attack.getResponse()));
+                    List<int[]> requestHighlights = createHighlights(Pattern.quote(payloadStr),
+                            this.helpers.bytesToString(attack.getRequest()));
+
+                    attack = callbacks.applyMarkers(attack, requestHighlights, responseHighlights);
+
+                    IHttpRequestResponse httpMessages[] = {attack};
+                    return new CustomIssue(
+                            this.helpers.analyzeRequest(attack).getUrl(),
+                            "Broken Script tag injection",
+                            "Medium",
+                            "Certain",
+                            "For historical reasons script blocks are known to make exotic parse.<br/>" +
+                                    "Reference: https://html.spec.whatwg.org/multipage/scripting.html#restrictions-for-contents-of-script-elements",
+                            "this issue leads client side DoS or XSS. " +
+                                    "If like '&lt;!--&lt;script&gt;' or '&lt;!--&lt;/script&gt;' string appeared into &lt;script&gt; tag, " +
+                                    "while until appeared second &lt;/script&gt; tag, browser believes to continue &lt;script&gt; tag. <br/>" +
+                                    "By this issue, attaker might able to XSS by send payload that includes two &lt;/script&gt; tag.<br/>" +
+                                    "<br/>" +
+                                    "Example: &lt;!--&lt;script&gt;&lt;/script&gt;&lt;/script&gt;&lt;img src=x onerror=alert(1)&gt;<br/>" +
+                                    "<br/>" +
+                                    "Reference: " +
+                                    "https://speakerdeck.com/masatokinugawa/shibuya-dot-xss-techtalk-number-11?slide=23",
+                            "Unicode escape to '<' and '>'.",
+                            httpMessages,
+                            baseRequestResponse.getHttpService()
+                    );
+
+                }
+            }
+        }
+
+        return null;
     }
 
     private boolean shouldTriggerPerRequestAttacks(IHttpRequestResponse baseRequestResponse, IScannerInsertionPoint insertionPoint) {
