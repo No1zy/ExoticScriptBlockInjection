@@ -77,17 +77,18 @@ public class PerRequestScans implements IScannerCheck {
                     "<!--!></script>".getBytes(),
             };
 
+            // attack to each parameter value.
             for (IParameter parameter : parameters) {
                 int paramStartOffset = parameter.getValueStart();
                 int paramEndOffset = parameter.getValueEnd();
                 byte requestStartParts[] = Arrays.copyOfRange(request, 0, paramStartOffset);
                 byte requestEndParts[] = Arrays.copyOfRange(request, paramEndOffset, request.length);
-                for (byte payload[] : payloads) {
+                for (byte[] payload : payloads) {
                     byte[] customRequest = new byte[requestStartParts.length + payload.length + requestEndParts.length];
                     System.arraycopy(requestStartParts, 0, customRequest, 0, requestStartParts.length);
                     System.arraycopy(payload, 0, customRequest, paramStartOffset, payload.length);
-                    System.arraycopy(requestEndParts, 0, customRequest, paramStartOffset + payload.length, requestEndParts.length);
-                    System.out.println("Request: " + new String(customRequest));
+                    System.arraycopy(requestEndParts, 0, customRequest,
+                            paramStartOffset + payload.length, requestEndParts.length);
                     IHttpRequestResponse attack = callbacks.makeHttpRequest(baseRequestResponse.getHttpService(), customRequest);
 
                     IScanIssue issue = checkAttackSuccessed(attack, baseRequestResponse, payload);
@@ -95,6 +96,37 @@ public class PerRequestScans implements IScannerCheck {
                 }
             }
 
+            // attack to request path.
+            URL targetURL = this.helpers.analyzeRequest(baseRequestResponse).getUrl();
+            System.out.println(targetURL);
+            for (byte[] payload : payloads) {
+                String path = targetURL.getPath();
+                Pattern regex = Pattern.compile(Pattern.quote(path));
+                Matcher matcher = regex.matcher(this.helpers.bytesToString(request));
+
+                int pathStartOffset;
+                int pathEndOffset;
+                matcher.find();
+                pathStartOffset = matcher.start();
+                pathEndOffset = matcher.end();
+
+                String payloadPath = path + "/" + this.helpers.urlEncode(this.helpers.bytesToString(payload));
+                byte requestStartParts[] = Arrays.copyOfRange(request, 0, pathStartOffset);
+                byte requestEndParts[] = Arrays.copyOfRange(request, pathEndOffset, request.length);
+                byte[] customRequest = new byte[requestStartParts.length + payloadPath.length() + requestEndParts.length];
+
+                System.arraycopy(requestStartParts, 0, customRequest, 0, requestStartParts.length);
+                System.arraycopy(payloadPath.getBytes(), 0, customRequest, pathStartOffset, payloadPath.length());
+                System.arraycopy(requestEndParts, 0, customRequest,
+                        pathStartOffset + payloadPath.length(), requestEndParts.length);
+
+                System.out.println("payload: " + payloadPath);
+                System.out.println("Request: " + this.helpers.bytesToString(customRequest));
+                IHttpRequestResponse attack = callbacks.makeHttpRequest(baseRequestResponse.getHttpService(), customRequest);
+
+                IScanIssue issue = checkAttackSuccessed(attack, baseRequestResponse, payload);
+                if (Objects.nonNull(issue)) return issue;
+            }
             return null;
         };
     }
